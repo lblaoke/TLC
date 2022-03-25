@@ -23,9 +23,21 @@ def ACC(output,output_OOD,target,u=None,uo=None,region_len=100/3):
     acc = correct.sum().item()/len(target)
     region_acc = region_correct.sum().item()/len(target)
     split_acc = [0,0,0]
+
+    # count number of classes for each region
+    num_class = int(3*region_len)
+    region_idx = (torch.arange(num_class)/region_len).long()
+    region_vol = [
+        num_class-torch.count_nonzero(region_idx).item(),
+        torch.where(region_idx==1,True,False).sum().item(),
+        torch.where(region_idx==2,True,False).sum().item()
+    ]
+    region_vol = [int(v*len(target)/num_class) for v in region_vol]
+
     for i in range(len(target)):
-        split_acc[int(target[i].item()/region_len)] += correct[i].item()
-    split_acc = [a/(len(target)/3) for a in split_acc]
+        split_acc[region_idx[target[i].item()]] += correct[i].item()
+    split_acc = [split_acc[i]/region_vol[i] for i in range(3)]
+
     print('Classification ACC:')
     print('\t all \t =',acc)
     print('\t region  =',region_acc)
@@ -53,6 +65,7 @@ def AUC(output,output_OOD,target,u=None,uo=None,region_len=100/3):
             split_auc[i] = 0
         else:
             split_auc[i] = roc_auc_score(mask_correct.cpu(),c[mask].cpu())
+
     print('Failure Prediction AUC:')
     print('\t all \t =',auc)
     print('\t head \t =',split_auc[0])
@@ -76,6 +89,7 @@ def FPR_95(output,output_OOD,target,u=None,uo=None,region_len=100/3):
         mask = ((target/region_len).long()==i)
         fpr,tpr,_ = roc_curve(correct[mask].cpu(),c[mask].cpu())
         split_fpr_95[i] = float(interpolate.interp1d(tpr,fpr)(0.95))
+
     print('Failure Prediction FPR-95:')
     print('\t all \t =',fpr_95)
     print('\t head \t =',split_fpr_95[0])
@@ -97,6 +111,7 @@ def ECE(output,output_OOD,target,u=None,uo=None,region_len=100/3):
     for i in range(len(split_ece)):
         mask = ((target/region_len).long()==i)
         split_ece[i] = ece_score(correct[mask],c[mask])
+
     print('Failure Prediction ECE:')
     print('\t all \t =',ece)
     print('\t head \t =',split_ece[0])

@@ -11,7 +11,7 @@
         "type": "ImbalanceCIFAR100DataLoader",
         "args":{
             "data_dir": "~",
-            "batch_size": 512,
+            "batch_size": 128,
             "num_workers": 2
         }
     },
@@ -29,7 +29,7 @@
         "args": {"reweight_epoch": 160}
     },
     "metrics": [
-        "ACC"
+        "ACC","AUC","FPR_95","ECE"
     ],
     "lr_scheduler": {
         "type": "CustomLR",

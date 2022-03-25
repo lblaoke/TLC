@@ -23,7 +23,7 @@ class Trainer(BaseTrainer):
         self.criterion._hook_before_epoch(epoch)
 
         total_loss = []
-        for _,(data,target) in enumerate(self.data_loader):
+        for batch_id,(data,target) in enumerate(self.data_loader):
             data,target = data.to(self.device),target.to(self.device)
             self.opt.zero_grad()
 
@@ -40,7 +40,7 @@ class Trainer(BaseTrainer):
             self.opt.step()
             total_loss.append(loss.item())
 
-        if epoch%25==0:
+        if epoch%100==0:
             self._valid_epoch(epoch)
             print("loss =",sum(total_loss)/len(total_loss))
 
@@ -49,7 +49,7 @@ class Trainer(BaseTrainer):
 
     def _valid_epoch(self,epoch):
         self.model.eval()
-        output = torch.empty(0,num_class,dtype=torch.float32,device=self.device)
+        output = torch.empty(0,self.num_class,dtype=torch.float32,device=self.device)
         uncertainty = torch.empty(0,dtype=torch.float32,device=self.device)
         for _,(data,_) in enumerate(self.valid_data_loader):
             data = data.to(self.device)

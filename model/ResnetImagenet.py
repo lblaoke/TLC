@@ -94,6 +94,7 @@ class ResNet(nn.Module):
         self.num_classes = num_classes
         self.num_experts = num_experts
         self.eta = reweight_temperature
+        self.use_experts = list(range(num_experts))
 
         super(ResNet, self).__init__()
         self.conv1 = nn.Conv2d(3,64,kernel_size=7,stride=2,padding=3,bias=False)
@@ -149,8 +150,8 @@ class ResNet(nn.Module):
 
         layers = []
         layers.append(block(self.inplanes, planes, stride, downsample))
-        self.next_inplanes = planes * block.expansion
-        for i in range(1, blocks):
+        self.next_inplanes = planes*block.expansion
+        for i in range(1,blocks):
             layers.append(block(self.next_inplanes, planes))
 
         return nn.Sequential(*layers)
@@ -159,7 +160,6 @@ class ResNet(nn.Module):
         x = (self.layer4s[ind])(x)
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
-        self.feat.append(x)
         x = (self.linears[ind])(x)
         x = x*30
         return x

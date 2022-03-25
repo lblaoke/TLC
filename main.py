@@ -9,14 +9,19 @@ import model.model as module_arch
 from parse_config import ConfigParser
 from trainer import Trainer
 import random
+from time import time
 
-def setup_seed(seed):
+def random_seed_setup(seed:int=None):
     torch.backends.cudnn.enabled = True
-    torch.backends.cudnn.deterministic = True
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    random.seed(seed)
-    np.random.seed(seed)
+    if seed:
+        print('Set random seed as',seed)
+        torch.backends.cudnn.deterministic = True
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        np.random.seed(seed)
+        random.seed(seed)
+    else:
+        torch.backends.cudnn.benchmark = True
 
 def main(config):
     logger = config.get_logger('train')
@@ -30,8 +35,8 @@ def main(config):
 
     # get function handles of loss and metrics
     loss_class = getattr(module_loss, config["loss"]["type"])
-    criterion = config.init_obj('loss', module_loss, cls_num_list=data_loader.cls_num_list)
-    metrics = [getattr(module_metric, met) for met in config['metrics']]
+    criterion = config.init_obj('loss',module_loss, cls_num_list=data_loader.cls_num_list)
+    metrics = [getattr(module_metric,met) for met in config['metrics']]
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
     optimizer = config.init_obj('optimizer',torch.optim,model.parameters())
@@ -66,7 +71,7 @@ def main(config):
         valid_data_loader   = valid_data_loader ,
         lr_scheduler        = lr_scheduler
     )
-    setup_seed(39789)
+    random_seed_setup()
     trainer.train()
 
 if __name__ == '__main__':
@@ -83,4 +88,7 @@ if __name__ == '__main__':
         CustomArgs(['--collaborative_loss'],type=int,target='loss;args;collaborative_loss'),
     ]
     config = ConfigParser.from_args(args,options)
+    start = time()
     main(config)
+    end = time()
+    print('Training finished in',(end-start)/60,'min')

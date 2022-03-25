@@ -12,7 +12,7 @@
         "args":{
             "data_dir": "~/ImageNet_LT",
             "batch_size": 256,
-            "num_workers": 4
+            "num_workers": 8
         }
     },
     "optimizer": {

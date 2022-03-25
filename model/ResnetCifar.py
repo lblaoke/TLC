@@ -37,7 +37,7 @@ class BasicBlock(nn.Module):
         return out
 
 class ResNet_s(nn.Module):
-    def __init__(self,block,num_blocks,num_experts,num_classes,reweight_temperature=0.1):
+    def __init__(self,block,num_blocks,num_experts,num_classes,reweight_temperature=0.2):
         super(ResNet_s,self).__init__()
 
         self.in_planes = 16
@@ -47,15 +47,15 @@ class ResNet_s(nn.Module):
 
         self.conv1 = nn.Conv2d(3,16,kernel_size=3,stride=1,padding=1,bias=False)
         self.bn1 = nn.BatchNorm2d(16)
-        self.layer1 = self._make_layer(block,16,num_blocks[0],stride=1)
+        self.layer1s = nn.ModuleList([self._make_layer(block,16,num_blocks[0],stride=1) for _ in range(num_experts)])
         self.in_planes = self.next_in_planes
 
-        self.layer2s = nn.ModuleList([self._make_layer(block,24,num_blocks[1],stride=2) for _ in range(num_experts)])
+        self.layer2s = nn.ModuleList([self._make_layer(block,32,num_blocks[1],stride=2) for _ in range(num_experts)])
         self.in_planes = self.next_in_planes
-        self.layer3s = nn.ModuleList([self._make_layer(block,48,num_blocks[2],stride=2) for _ in range(num_experts)])
+        self.layer3s = nn.ModuleList([self._make_layer(block,64,num_blocks[2],stride=2) for _ in range(num_experts)])
         self.in_planes = self.next_in_planes
 
-        self.linears = nn.ModuleList([NormedLinear(48,num_classes) for _ in range(num_experts)])
+        self.linears = nn.ModuleList([NormedLinear(64,num_classes) for _ in range(num_experts)])
 
         self.use_experts = list(range(num_experts))
         self.apply(_weights_init)
@@ -79,7 +79,6 @@ class ResNet_s(nn.Module):
 
     def forward(self,x):
         x = F.relu(self.bn1(self.conv1(x)))
-        x = self.layer1(x)
 
         outs = []
         self.logits = outs
@@ -87,7 +86,8 @@ class ResNet_s(nn.Module):
         self.w = [torch.ones(len(x),dtype=torch.bool,device=x.device)]
 
         for i in self.use_experts:
-            xi = self.layer2s[i](x)
+            xi = self.layer1s[i](x)
+            xi = self.layer2s[i](xi)
             xi = self.layer3s[i](xi)
             xi = F.avg_pool2d(xi,xi.shape[3])
             xi = xi.flatten(1)
