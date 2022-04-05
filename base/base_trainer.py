@@ -5,7 +5,7 @@ from numpy import inf
 from utils import load_state_dict, rename_parallel_state_dict
 
 class BaseTrainer:
-    def __init__(self,model,criterion,metric_ftns,opt,config):
+    def __init__(self,model,criterion,opt,config):
 
         # Check with nvidia-smi about the available GPUs. Only 1 GPU is required.
         self.device = torch.device('cuda:0')
@@ -13,7 +13,6 @@ class BaseTrainer:
         self.config = config
         self.model = model.to(self.device)
         self.criterion = criterion.to(self.device)
-        self.metric_ftns = metric_ftns
         self.opt = opt
         self.epochs = config['trainer']['epochs']
 

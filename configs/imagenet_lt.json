@@ -12,7 +12,7 @@
         "args":{
             "data_dir": "~/ImageNet_LT",
             "batch_size": 256,
-            "num_workers": 8
+            "num_workers": 10
         }
     },
     "optimizer": {
@@ -26,11 +26,11 @@
     },
     "loss": {
         "type": "TLCLoss",
-        "args": {"reweight_epoch": 80}
+        "args": {
+            "reweight_factor": 0.02,
+            "reweight_epoch": 80
+        }
     },
-    "metrics": [
-        "ACC"
-    ],
     "lr_scheduler": {
         "type": "CustomLR",
         "args": {

@@ -28,9 +28,6 @@
         "type": "TLCLoss",
         "args": {"reweight_epoch": 160}
     },
-    "metrics": [
-        "ACC","AUC","FPR_95","ECE"
-    ],
     "lr_scheduler": {
         "type": "CustomLR",
         "args": {

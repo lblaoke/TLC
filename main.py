@@ -33,10 +33,9 @@ def main(config):
     # build model architecture, then print to console
     model = config.init_obj('arch',module_arch)
 
-    # get function handles of loss and metrics
+    # get loss
     loss_class = getattr(module_loss, config["loss"]["type"])
     criterion = config.init_obj('loss',module_loss, cls_num_list=data_loader.cls_num_list)
-    metrics = [getattr(module_metric,met) for met in config['metrics']]
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
     optimizer = config.init_obj('optimizer',torch.optim,model.parameters())
@@ -64,7 +63,6 @@ def main(config):
     trainer = Trainer(
         model                                   ,
         criterion                               ,
-        metrics                                 ,
         optimizer                               ,
         config              = config            ,
         data_loader         = data_loader       ,
@@ -74,7 +72,7 @@ def main(config):
     random_seed_setup()
     trainer.train()
 
-if __name__ == '__main__':
+if __name__=='__main__':
     args = argparse.ArgumentParser(description='PyTorch Template')
     args.add_argument('-c','--config',default=None,type=str,help='config file path (default: None)')
 
@@ -88,7 +86,16 @@ if __name__ == '__main__':
         CustomArgs(['--collaborative_loss'],type=int,target='loss;args;collaborative_loss'),
     ]
     config = ConfigParser.from_args(args,options)
+
+    # Training
     start = time()
     main(config)
     end = time()
-    print('Training finished in',(end-start)/60,'min')
+
+    # Show used time
+    minute = (end-start)/60
+    hour = minute/60
+    if minute<60:
+        print('Training finished in %.1f min'%minute)
+    else:
+        print('Training finished in %.1f h'%hour)

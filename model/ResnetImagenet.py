@@ -4,64 +4,23 @@ import torch.nn as nn
 import torch.nn.functional as F
 from utils import autocast
 
-def conv3x3(in_planes, out_planes, stride=1):
-    """3x3 convolution with padding"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=1, bias=False)
-
 class NormedLinear(nn.Module):
     def __init__(self, in_features, out_features):
         super(NormedLinear, self).__init__()
         self.weight = nn.Parameter(torch.Tensor(in_features, out_features))
         self.weight.data.uniform_(-1, 1).renorm_(2, 1, 1e-5).mul_(1e5)
-
     def forward(self, x):
-        out = F.normalize(x, dim=1).mm(F.normalize(self.weight, dim=0))
-        return out
+        return F.normalize(x, dim=1).mm(F.normalize(self.weight, dim=0))
 
-class BasicBlock(nn.Module):
-    expansion = 1
-
-    def __init__(self, inplanes, planes, stride=1, downsample=None):
-        super(BasicBlock, self).__init__()
-        self.conv1 = conv3x3(inplanes, planes, stride)
-        self.bn1 = nn.BatchNorm2d(planes)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = conv3x3(planes, planes)
-        self.bn2 = nn.BatchNorm2d(planes)
-        self.downsample = downsample
-        self.stride = stride
-
-    def forward(self, x):
-        residual = x
-
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-
-        out = self.conv2(out)
-        out = self.bn2(out)
-
-        if self.downsample is not None:
-            residual = self.downsample(x)
-
-        out += residual
-        out = self.relu(out)
-
-        return out
-    
 class Bottleneck(nn.Module):
-    expansion = 4
-
     def __init__(self, inplanes, planes, stride=1, downsample=None):
         super(Bottleneck, self).__init__()
-        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
+        self.conv1 = nn.Conv2d(inplanes,planes,kernel_size=1,bias=False)
         self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride,
-                               padding=1, bias=False)
+        self.conv2 = nn.Conv2d(planes,planes,kernel_size=3,stride=stride,padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(planes)
-        self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(planes * 4)
+        self.conv3 = nn.Conv2d(planes,planes*4,kernel_size=1,bias=False)
+        self.bn3 = nn.BatchNorm2d(planes*4)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
@@ -89,7 +48,7 @@ class Bottleneck(nn.Module):
         return out
 
 class ResNet(nn.Module):
-    def __init__(self,block,layers,num_experts,num_classes=1000,layer3_output_dim=None,layer4_output_dim=None,reweight_temperature=0.3):
+    def __init__(self,block,layers,num_experts,num_classes=1000,layer3_output_dim=None,layer4_output_dim=None,reweight_temperature=0.5):
         self.inplanes = 64
         self.num_classes = num_classes
         self.num_experts = num_experts
@@ -107,9 +66,9 @@ class ResNet(nn.Module):
         self.inplanes = self.next_inplanes
 
         if layer3_output_dim is None:
-            layer3_output_dim = 192
+            layer3_output_dim = 256
         if layer4_output_dim is None:
-            layer4_output_dim = 384
+            layer4_output_dim = 512
 
         self.layer3 = self._make_layer(block, layer3_output_dim, layers[2], stride=2)
         self.inplanes = self.next_inplanes
@@ -125,7 +84,7 @@ class ResNet(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-        self.linears = nn.ModuleList([NormedLinear(layer4_output_dim * block.expansion, num_classes) for _ in range(num_experts)])
+        self.linears = nn.ModuleList([NormedLinear(layer4_output_dim * 4, num_classes) for _ in range(num_experts)])
 
     def _hook_before_iter(self):
         assert self.training, "_hook_before_iter should be called at training time only, after train() is called"
@@ -135,34 +94,29 @@ class ResNet(nn.Module):
                 if module.weight.requires_grad == False:
                     module.eval()
                     count += 1
-
         if count > 0:
             print("Warning: detected at least one frozen BN, set them to eval state. Count:", count)
 
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
-        if stride != 1 or self.inplanes != planes * block.expansion:
+        if stride!=1 or self.inplanes!=planes*4:
             downsample = nn.Sequential(
-                nn.Conv2d(self.inplanes, planes * block.expansion,
-                          kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(planes * block.expansion),
+                nn.Conv2d(self.inplanes,planes*4,kernel_size=1,stride=stride,bias=False),
+                nn.BatchNorm2d(planes*4),
             )
-
         layers = []
         layers.append(block(self.inplanes, planes, stride, downsample))
-        self.next_inplanes = planes*block.expansion
+        self.next_inplanes = planes*4
         for i in range(1,blocks):
             layers.append(block(self.next_inplanes, planes))
-
         return nn.Sequential(*layers)
 
-    def _separate_part(self, x, ind):
-        x = (self.layer4s[ind])(x)
+    def expert_forward(self,x,ind):
+        x = self.layer4s[ind](x)
         x = self.avgpool(x)
-        x = x.view(x.size(0), -1)
-        x = (self.linears[ind])(x)
-        x = x*30
-        return x
+        x = x.view(x.size(0),-1)
+        x = self.linears[ind](x)
+        return x*30
 
     def forward(self, x):
         with autocast():
@@ -180,7 +134,7 @@ class ResNet(nn.Module):
             self.w = [torch.ones(len(x),dtype=torch.bool,device=x.device)]
 
             for i in range(self.num_experts):
-                xi = self._separate_part(x,i)
+                xi = self.expert_forward(x,i)
                 outs.append(xi)
 
                 # evidential
