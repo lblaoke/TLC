@@ -28,12 +28,6 @@ class ImbalanceCIFAR100DataLoader(DataLoader):
             self.dataset = datasets.CIFAR100(data_dir,train=False,download=True,transform=test_trsfm)
             self.val_dataset = None
 
-        # Uncomment to use OOD datasets
-        self.OOD_dataset = None
-        # self.OOD_dataset = datasets.SVHN(data_dir,split="test",download=True,transform=test_trsfm)
-        # self.OOD_dataset = LT_Dataset('../ImageNet_LT/ImageNet_LT_open','../ImageNet_LT/ImageNet_LT_open.txt',train_trsfm)
-        # self.OOD_dataset = LT_Dataset('../Places_LT/Places_LT_open','../Places_LT/Places_LT_open.txt',train_trsfm)
-
         num_classes = max(self.dataset.targets)+1
         assert num_classes == 100
 

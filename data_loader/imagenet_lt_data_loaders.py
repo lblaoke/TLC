@@ -52,10 +52,6 @@ class ImageNetLTDataLoader(DataLoader):
             self.dataset = LT_Dataset(data_dir,data_dir+'/ImageNet_LT_val.txt',test_trsfm)
             self.val_dataset = None
 
-        # Uncomment to use OOD datasets
-        self.OOD_dataset = None
-        # self.OOD_dataset = LT_Dataset('../ImageNet_LT/ImageNet_LT_open','../ImageNet_LT/ImageNet_LT_open.txt',train_trsfm)
-
         self.n_samples = len(self.dataset)
 
         num_classes = max(self.dataset.targets)+1
