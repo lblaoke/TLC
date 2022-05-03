@@ -20,8 +20,8 @@ def ACC(output,target,u=None,region_len=100/3):
         torch.where(region_idx==1,True,False).sum().item(),
         torch.where(region_idx==2,True,False).sum().item()
     ]
-    region_vol = [int(v*len(target)/num_class) for v in region_vol]
-
+    target_count = target.bincount().cpu().numpy()
+    region_vol = [target_count[:region_vol[0]].sum(), target_count[region_vol[0]:(region_vol[0]+region_vol[1])].sum(),target_count[-region_vol[2]:].sum()]
     for i in range(len(target)):
         split_acc[region_idx[target[i].item()]] += correct[i].item()
     split_acc = [split_acc[i]/region_vol[i] for i in range(3)]
@@ -32,3 +32,4 @@ def ACC(output,target,u=None,region_len=100/3):
     print('\t head \t =',split_acc[0])
     print('\t med \t =',split_acc[1])
     print('\t tail \t =',split_acc[2])
+    return acc, region_acc, split_acc[0], split_acc[1], split_acc[2]
