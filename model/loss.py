@@ -93,7 +93,7 @@ class TLCLoss(nn.Module):
             # dynamic engagement
             w = extra_info['w'][i]/extra_info['w'][i].max()
             w = torch.where(w>self.tau,True,False)
-            loss += (w*l).sum()/w.sum()
+            l = (w*l).sum()/w.sum()
             loss += l.mean()
 
         return loss
